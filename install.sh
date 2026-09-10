@@ -87,11 +87,12 @@ prompt_if_empty() {
   if [[ -n "${current}" ]]; then
     return
   fi
+  # curl | bash pipes the script on stdin — read prompts from the terminal.
   if [[ "${secret}" == "1" ]]; then
-    read -rsp "${prompt}: " current
-    echo
+    read -rsp "${prompt}: " current </dev/tty
+    echo >&2
   else
-    read -rp "${prompt}: " current
+    read -rp "${prompt}: " current </dev/tty
   fi
   [[ -n "${current}" ]] || die "${var_name} is required."
   printf -v "${var_name}" '%s' "${current}"
@@ -102,7 +103,7 @@ prompt_if_empty POKO_WORKSPACE_ID "POKO_WORKSPACE_ID"
 prompt_if_empty POKO_API_KEY "POKO_API_KEY (poko_live_…)" 1
 
 if [[ -z "${POKO_PUBLIC_URL:-}" ]]; then
-  read -rp "POKO_PUBLIC_URL (optional, e.g. https://video.example.com — Enter to skip): " POKO_PUBLIC_URL || true
+  read -rp "POKO_PUBLIC_URL (optional, e.g. https://video.example.com — Enter to skip): " POKO_PUBLIC_URL </dev/tty || true
 fi
 
 PUBLIC_HOST=""
