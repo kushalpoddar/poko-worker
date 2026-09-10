@@ -1,0 +1,41 @@
+services:
+  poko-worker:
+    platform: linux/amd64
+    image: ghcr.io/kushalpoddar/ai-ads/poko-worker:0.4.0
+    container_name: poko-worker
+    ports:
+      - "127.0.0.1:8787:8787"
+    env_file:
+      - .env
+    environment:
+      POKO_DATA_DIR: /var/lib/poko
+    volumes:
+      - poko-data:/var/lib/poko
+    shm_size: "1gb"
+    restart: unless-stopped
+    mem_limit: 4g
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "7"
+
+  caddy:
+    profiles: ["tls"]
+    image: caddy:2-alpine
+    container_name: poko-worker-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - poko-worker
+    restart: unless-stopped
+
+volumes:
+  poko-data:
+  caddy-data:
+  caddy-config:
