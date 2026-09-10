@@ -6,13 +6,12 @@
 set -euo pipefail
 
 INSTALLER_URL="${POKO_INSTALLER_URL:-https://raw.githubusercontent.com/kushalpoddar/poko-worker/main/install.sh}"
-# curl | bash leaves the script on stdin — re-exec from a file so prompts work.
-if [[ ! -t 0 ]]; then
+# curl | bash leaves the script on stdin — re-run from a file with a real TTY.
+if [[ ! -t 0 && -z "${POKO_INSTALLER_REEXEC:-}" ]]; then
   tmp="$(mktemp)"
-  trap 'rm -f "$tmp"' EXIT
   curl -fsSL "$INSTALLER_URL" -o "$tmp"
   chmod +x "$tmp"
-  exec bash "$tmp" "$@"
+  exec env POKO_INSTALLER_REEXEC=1 bash "$tmp" "$@" </dev/tty
 fi
 
 POKO_WORKER_VERSION="${POKO_WORKER_VERSION:-0.4.0}"
