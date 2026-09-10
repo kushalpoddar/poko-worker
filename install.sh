@@ -20,6 +20,8 @@ POKO_IMAGE="ghcr.io/kushalpoddar/ai-ads/poko-worker:${POKO_WORKER_VERSION}"
 POKO_API_BASE="${POKO_API_BASE:-https://api.poko.video}"
 INSTALL_DIR="${POKO_INSTALL_DIR:-${HOME}/poko-worker}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+SKIP_PUBLIC_URL="${POKO_SKIP_PUBLIC_URL:-}"
+SKIP_DNS_CHECK="${POKO_SKIP_DNS_CHECK:-}"
 
 info() { printf '→ %s\n' "$*"; }
 ok() { printf '✅ %s\n' "$*"; }
@@ -30,13 +32,15 @@ usage() {
 Poko worker installer (Linux VPS)
 
 Environment (optional — prompts if missing):
+  POKO_PUBLIC_URL       https://video.example.com  (or hostname; required unless skip)
   POKO_TOKEN            desktop session (lm_…)
   POKO_WORKSPACE_ID     workspace id
   POKO_API_KEY          caller key (poko_live_…)
   POKO_API_BASE         default: https://api.poko.video
-  POKO_PUBLIC_URL       optional https://video.example.com (enables TLS via Caddy)
   POKO_WORKER_VERSION   default: ${POKO_WORKER_VERSION}
   POKO_INSTALL_DIR      default: ~/poko-worker
+  POKO_SKIP_PUBLIC_URL  set to 1 to skip TLS (loopback only)
+  POKO_SKIP_DNS_CHECK   set to 1 if DNS is not visible from this box yet
 
 Example:
   export POKO_TOKEN=lm_… POKO_WORKSPACE_ID=… POKO_API_KEY=poko_live_…
@@ -108,19 +112,83 @@ prompt_if_empty() {
   printf -v "${var_name}" '%s' "${current}"
 }
 
+normalize_public_host() {
+  local raw="$1"
+  raw="$(printf '%s' "$raw" | tr -d '[:space:]')"
+  raw="${raw#http://}"
+  raw="${raw#https://}"
+  raw="${raw%%/*}"
+  raw="${raw%%:*}"
+  printf '%s' "$raw" | tr '[:upper:]' '[:lower:]'
+}
+
+this_public_ip() {
+  curl -fsS --max-time 5 https://checkip.amazonaws.com 2>/dev/null | tr -d '[:space:]' \
+    || curl -fsS --max-time 5 https://icanhazip.com 2>/dev/null | tr -d '[:space:]' \
+    || true
+}
+
+resolve_host_ips() {
+  local host="$1"
+  if command -v dig >/dev/null 2>&1; then
+    dig +short A "$host" | grep -E '^[0-9.]+$' || true
+  elif command -v getent >/dev/null 2>&1; then
+    getent ahostsv4 "$host" | awk '{print $1}' | sort -u || true
+  else
+    python3 - "$host" <<'PY' 2>/dev/null || true
+import socket, sys
+try:
+    print("\n".join(sorted({ai[4][0] for ai in socket.getaddrinfo(sys.argv[1], None, socket.AF_INET)})))
+except OSError:
+    pass
+PY
+  fi
+}
+
+ensure_public_url() {
+  PUBLIC_HOST=""
+  if [[ "${SKIP_PUBLIC_URL}" == "1" ]]; then
+    POKO_PUBLIC_URL=""
+    return
+  fi
+  if [[ -z "${POKO_PUBLIC_URL:-}" ]]; then
+    echo
+    echo "Point DNS here first (A record → this VPS), then enter that hostname."
+    echo "  Example: video.example.com   or   https://video.example.com"
+    echo "  Type skip to install without a public URL (loopback only)."
+    read -rp "Public URL: " POKO_PUBLIC_URL </dev/tty || true
+  fi
+  local trimmed
+  trimmed="$(printf '%s' "${POKO_PUBLIC_URL:-}" | tr -d '[:space:]')"
+  if [[ -z "${trimmed}" || "${trimmed}" == "skip" ]]; then
+    POKO_PUBLIC_URL=""
+    info "Skipping public URL — worker stays on 127.0.0.1:8787"
+    return
+  fi
+  PUBLIC_HOST="$(normalize_public_host "$trimmed")"
+  [[ -n "${PUBLIC_HOST}" ]] || die "Could not parse hostname from that URL."
+  POKO_PUBLIC_URL="https://${PUBLIC_HOST}"
+  info "Using ${POKO_PUBLIC_URL}"
+
+  if [[ "${SKIP_DNS_CHECK}" == "1" ]]; then
+    return
+  fi
+  local box_ip resolved
+  box_ip="$(this_public_ip)"
+  resolved="$(resolve_host_ips "${PUBLIC_HOST}")"
+  if [[ -z "${resolved}" ]]; then
+    die "${PUBLIC_HOST} does not resolve yet. Add an A record to this VPS, wait, then run: dig +short ${PUBLIC_HOST}"
+  fi
+  if [[ -n "${box_ip}" ]] && ! printf '%s\n' "${resolved}" | grep -qx "${box_ip}"; then
+    die "${PUBLIC_HOST} points at $(printf '%s' "${resolved}" | tr '\n' ' ')— this box is ${box_ip}. Fix the A record, then re-run."
+  fi
+  ok "DNS ${PUBLIC_HOST} → ${box_ip:-ok}"
+}
+
+ensure_public_url
 prompt_if_empty POKO_TOKEN "POKO_TOKEN (lm_… from desktop session)" 1
 prompt_if_empty POKO_WORKSPACE_ID "POKO_WORKSPACE_ID"
 prompt_if_empty POKO_API_KEY "POKO_API_KEY (poko_live_…)" 1
-
-if [[ -z "${POKO_PUBLIC_URL:-}" ]]; then
-  read -rp "POKO_PUBLIC_URL (optional, e.g. https://video.example.com — Enter to skip): " POKO_PUBLIC_URL </dev/tty || true
-fi
-
-PUBLIC_HOST=""
-if [[ -n "${POKO_PUBLIC_URL}" ]]; then
-  PUBLIC_HOST="$(printf '%s' "${POKO_PUBLIC_URL}" | sed -E 's#^https?://##' | sed 's#/.*##')"
-  [[ -n "${PUBLIC_HOST}" ]] || die "Could not parse hostname from POKO_PUBLIC_URL."
-fi
 
 mkdir -p "${INSTALL_DIR}"
 info "Installing to ${INSTALL_DIR}"
@@ -195,7 +263,7 @@ ${PUBLIC_HOST} {
 }
 EOF
   TLS_ARGS=(--profile tls)
-  info "TLS enabled for ${PUBLIC_HOST} (point DNS A/AAAA at this server first)"
+  info "Caddy TLS for ${PUBLIC_HOST}"
 fi
 
 ensure_docker

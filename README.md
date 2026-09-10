@@ -2,38 +2,52 @@
 
 Run the Poko automation worker on your own Linux VPS.
 
-## Quick install
+## 1. Point DNS first
 
-SSH into an **x64 Ubuntu/Debian** server (8GB RAM recommended), then:
+On an **x64 Ubuntu/Debian** VPS (8GB RAM recommended), note the public IP, then at your DNS host:
+
+```
+A    video.yourdomain.com    →    <VPS public IP>
+```
+
+Open ports **80** and **443** (and 22 for SSH).
+
+Wait until the name resolves **from your laptop**:
+
+```bash
+dig +short video.yourdomain.com
+```
+
+It must print the VPS IP. Do not run the installer until it does.
+
+## 2. Install
+
+SSH into the VPS, then:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/kushalpoddar/poko-worker/main/install.sh | bash
 ```
 
-The script installs Docker if needed, asks for your Poko credentials, pulls the image, and starts the worker.
+The script asks for:
+
+1. **Public URL** — `video.yourdomain.com` or `https://video.yourdomain.com` (trimmed; Caddy + TLS start automatically)
+2. **POKO_TOKEN**, **POKO_WORKSPACE_ID**, **POKO_API_KEY** — from **Poko Motion → Settings → API**
+
+It checks that the hostname points at this box, then installs Docker if needed, pulls the image, and starts the worker + Caddy.
 
 ### Non-interactive
 
 ```bash
+export POKO_PUBLIC_URL=https://video.yourdomain.com
 export POKO_TOKEN=lm_…
 export POKO_WORKSPACE_ID=…
 export POKO_API_KEY=poko_live_…
-# optional:
-# export POKO_PUBLIC_URL=https://video.example.com
 
 curl -fsSL https://raw.githubusercontent.com/kushalpoddar/poko-worker/main/install.sh | bash
 ```
 
-Get `POKO_TOKEN`, `POKO_WORKSPACE_ID`, and `POKO_API_KEY` from **Poko Motion → Settings → API**.
+## 3. After install
 
-## After install
-
-- **Local check:** `curl -H "Authorization: Bearer $POKO_API_KEY" http://127.0.0.1:8787/automations/v1/status`
-- **Automations base URL:** `https://your-domain.com/automations/v1/...` (with TLS) or put your own reverse proxy in front of `127.0.0.1:8787`
+- **Public:** `https://video.yourdomain.com/automations/v1/status` (Bearer `POKO_API_KEY`)
+- **Automations base URL:** `https://video.yourdomain.com/automations/v1/...`
 - **Logs:** `cd ~/poko-worker && docker compose logs -f poko-worker`
-
-## Requirements
-
-- Linux x64 VPS with Docker (script installs it)
-- 8GB RAM recommended
-- Ports 80/443 open if using `POKO_PUBLIC_URL` (Caddy TLS)
