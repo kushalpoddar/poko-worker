@@ -25,7 +25,8 @@ It must print the VPS IP. Do not run the installer until it does.
 SSH into the VPS, then:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/kushalpoddar/poko-worker/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/kushalpoddar/poko-worker/main/install.sh -o install.sh
+bash install.sh
 ```
 
 The script asks for:
@@ -43,7 +44,8 @@ export POKO_TOKEN=lm_…
 export POKO_WORKSPACE_ID=…
 export POKO_API_KEY=poko_live_…
 
-curl -fsSL https://raw.githubusercontent.com/kushalpoddar/poko-worker/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/kushalpoddar/poko-worker/main/install.sh -o install.sh
+bash install.sh
 ```
 
 ## 3. After install

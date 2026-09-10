@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Self-hosted Poko worker — run on a Linux VPS (Ubuntu/Debian).
-#   curl -fsSL https://raw.githubusercontent.com/kushalpoddar/poko-worker/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/kushalpoddar/poko-worker/main/install.sh -o install.sh
+#   bash install.sh
 # Or export POKO_TOKEN, POKO_WORKSPACE_ID, POKO_API_KEY first for non-interactive install.
 
 set -euo pipefail
@@ -218,6 +219,7 @@ services:
       - .env
     environment:
       POKO_DATA_DIR: /var/lib/poko
+      POKO_SELF_HOSTED: "1"
     volumes:
       - poko-data:/var/lib/poko
     shm_size: "1gb"

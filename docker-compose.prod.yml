@@ -9,6 +9,7 @@ services:
       - .env
     environment:
       POKO_DATA_DIR: /var/lib/poko
+      POKO_SELF_HOSTED: "1"
     volumes:
       - poko-data:/var/lib/poko
     shm_size: "1gb"
