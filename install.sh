@@ -15,7 +15,7 @@ if [[ ! -t 0 && -z "${POKO_INSTALLER_REEXEC:-}" ]]; then
   exec env POKO_INSTALLER_REEXEC=1 bash "$tmp" "$@" </dev/tty
 fi
 
-POKO_WORKER_VERSION="${POKO_WORKER_VERSION:-0.4.0}"
+POKO_WORKER_VERSION="${POKO_WORKER_VERSION:-latest}"
 POKO_IMAGE="ghcr.io/kushalpoddar/ai-ads/poko-worker:${POKO_WORKER_VERSION}"
 POKO_API_BASE="${POKO_API_BASE:-https://api.poko.video}"
 INSTALL_DIR="${POKO_INSTALL_DIR:-${HOME}/poko-worker}"
@@ -212,6 +212,7 @@ services:
   poko-worker:
     platform: linux/amd64
     image: ${POKO_IMAGE}
+    pull_policy: always
     container_name: poko-worker
     ports:
       - "127.0.0.1:8787:8787"

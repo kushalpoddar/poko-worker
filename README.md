@@ -34,7 +34,7 @@ The script asks for:
 1. **Public URL** — `video.yourdomain.com` or `https://video.yourdomain.com` (trimmed; Caddy + TLS start automatically)
 2. **POKO_TOKEN**, **POKO_WORKSPACE_ID**, **POKO_API_KEY** — from **Poko Motion → Settings → API**
 
-It checks that the hostname points at this box, then installs Docker if needed, pulls the image, and starts the worker + Caddy.
+It checks that the hostname points at this box, then installs Docker if needed, pulls `poko-worker:latest`, and starts the worker + Caddy. Pin a release with `POKO_WORKER_VERSION=0.4.1`.
 
 ### Non-interactive
 
@@ -53,3 +53,4 @@ bash install.sh
 - **Public:** `https://video.yourdomain.com/automations/v1/status` (Bearer `POKO_API_KEY`)
 - **Automations base URL:** `https://video.yourdomain.com/automations/v1/...`
 - **Logs:** `cd ~/poko-worker && docker compose logs -f poko-worker`
+- **Update image:** `cd ~/poko-worker && docker compose pull && docker compose up -d`

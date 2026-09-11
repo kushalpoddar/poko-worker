@@ -1,7 +1,8 @@
 services:
   poko-worker:
     platform: linux/amd64
-    image: ghcr.io/kushalpoddar/ai-ads/poko-worker:0.4.0
+    image: ghcr.io/kushalpoddar/ai-ads/poko-worker:latest
+    pull_policy: always
     container_name: poko-worker
     ports:
       - "127.0.0.1:8787:8787"
